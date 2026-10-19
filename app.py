@@ -19,6 +19,7 @@ from pathlib import Path
 import html
 import json
 import os
+from urllib.parse import quote
 import sys
 import uuid
 
@@ -934,9 +935,31 @@ def movie_details(movie_id):
             type="primary",
         )
 
+        st.subheader("Where to Watch")
+
+        movie_title = safe_text(row.get("title"), "")
+        release_year = movie_year(row)
+
+        search_title = (
+            f"{movie_title} {release_year}"
+            if release_year
+            else movie_title
+        )
+
+        watch_url = (
+            "https://www.justwatch.com/us/search?q="
+            + quote(search_title, safe="")
+        )
+
+        st.link_button(
+            "Find on JustWatch ↗",
+            watch_url,
+            use_container_width=False,
+        )
+
         st.caption(
-            "Streaming availability and verified "
-            "trailer links are not connected."
+            "Check streaming, rental, and purchase "
+            "options. Availability varies by region."
         )
 
     st.divider()
