@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "artifacts": {
+    "data/movies_expanded.csv": {
+      "size_bytes": 94508044,
+      "sha256": "3e383c85b3dceb6f72ab1837aacd2720d07b6ad5793127aa957e8a0b6ee367ba"
+    },
+    "data/movies_with_imdb.csv": {
+      "size_bytes": 96059837,
+      "sha256": "a3eea3667f4b081220239291a78e1f5e479825ae8cc567d9065a93d840124b9b"
+    },
+    "data/semantic_cache/full_embeddings.npy": {
+      "size_bytes": 204939392,
+      "sha256": "da408fb944011870083e759772dae90ad72ecf65659e1424da80f90f53fdeeca"
+    },
+    "data/semantic_cache/full_embeddings_metadata.json": {
+      "size_bytes": 179,
+      "sha256": "1b6c30b003732c1a0b1cbf3e2338e157f7e38b8acb4a30a416474a095fd91705"
+    },
+    "data/movielens/lgbm_history_affinity.csv": {
+      "size_bytes": 12105672,
+      "sha256": "3981f9eedfe284bf3c97795312a6ae94e69bac31dfba1bddb9a87c85d8f64e84"
+    },
+    "data/movielens/lgbm_history_universe.csv": {
+      "size_bytes": 40808,
+      "sha256": "e5c00ff4fddddecb030340d5b177a7cf460e3f9e7c3c3e7abd6d0f6fa6906cd6"
+    },
+    "data/movielens/lgbm_training_pairs_v3.csv.gz": {
+      "size_bytes": 1311811,
+      "sha256": "4f2027d74d501fb7f02881c30aa62801c8fe2767e3ea70db4d9287a45b18ed0a"
+    },
+    "models/lgbm_ranker_v4_experimental.txt": {
+      "size_bytes": 182391,
+      "sha256": "525043a8ce669328d68a4a8e25aa26868af199101ea2fe456375deade51e2098"
+    }
+  }
+}
