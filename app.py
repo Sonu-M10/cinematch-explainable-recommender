@@ -237,6 +237,11 @@ def load_ensemble():
     return rrf_ensemble
 
 
+from cloud_data import ensure_classic_data
+
+with st.spinner("Preparing CineMatch movie catalog..."):
+    ensure_classic_data()
+
 classic = load_classic()
 catalog = classic.df
 fields = available_fields(catalog)
