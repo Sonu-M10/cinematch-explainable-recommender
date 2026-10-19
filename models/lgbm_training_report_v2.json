@@ -1,0 +1,37 @@
+{
+  "training_groups": 14881,
+  "development_groups": 3721,
+  "best_iteration": 31,
+  "lightgbm_pairwise_accuracy": 0.6143509809191078,
+  "affinity_pairwise_accuracy": 0.5385649019080893,
+  "popularity_pairwise_accuracy": 0.5705455522708949,
+  "features": [
+    "adjusted_affinity",
+    "cosine_affinity",
+    "shared_positive_users",
+    "affinity_available",
+    "candidate_positive_count",
+    "tfidf_similarity",
+    "genre_overlap",
+    "year_difference",
+    "candidate_year",
+    "candidate_imdb_rating",
+    "candidate_imdb_log_votes",
+    "anchor_imdb_rating"
+  ],
+  "feature_importance_gain": {
+    "candidate_imdb_rating": 13412.452363014221,
+    "candidate_imdb_log_votes": 3242.52490901947,
+    "shared_positive_users": 2353.4113054275513,
+    "candidate_positive_count": 1263.6343531608582,
+    "adjusted_affinity": 1128.0981931686401,
+    "cosine_affinity": 844.4613065719604,
+    "genre_overlap": 559.4458961486816,
+    "candidate_year": 416.4226016998291,
+    "tfidf_similarity": 318.44892930984497,
+    "year_difference": 131.04090118408203,
+    "affinity_available": 0.0,
+    "anchor_imdb_rating": 0.0
+  },
+  "evaluation_note": "Two observed candidates per user, one positive and one non-positive. Random user-disjoint development split. Not equivalent to full-list HitRate@10."
+}

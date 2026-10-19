@@ -1,0 +1,39 @@
+{
+  "training_groups": 14881,
+  "development_groups": 3721,
+  "best_iteration": 17,
+  "lightgbm_pairwise_accuracy": 0.6154259607632356,
+  "affinity_pairwise_accuracy": 0.5385649019080893,
+  "popularity_pairwise_accuracy": 0.5705455522708949,
+  "features": [
+    "adjusted_affinity",
+    "cosine_affinity",
+    "shared_positive_users",
+    "affinity_available",
+    "candidate_positive_count",
+    "tfidf_similarity",
+    "genre_overlap",
+    "year_difference",
+    "candidate_year",
+    "candidate_imdb_rating",
+    "candidate_imdb_log_votes",
+    "anchor_imdb_rating",
+    "semantic_similarity"
+  ],
+  "feature_importance_gain": {
+    "candidate_imdb_rating": 11511.401014328003,
+    "candidate_imdb_log_votes": 2588.933298110962,
+    "shared_positive_users": 1855.951099395752,
+    "adjusted_affinity": 647.0083045959473,
+    "candidate_positive_count": 593.4181599617004,
+    "cosine_affinity": 531.1765022277832,
+    "genre_overlap": 406.83420181274414,
+    "semantic_similarity": 260.1414680480957,
+    "candidate_year": 120.99710273742676,
+    "tfidf_similarity": 110.49979972839355,
+    "year_difference": 35.43259811401367,
+    "affinity_available": 0.0,
+    "anchor_imdb_rating": 0.0
+  },
+  "evaluation_note": "Two observed candidates per user, one positive and one non-positive. Random user-disjoint development split. Not equivalent to full-list HitRate@10."
+}

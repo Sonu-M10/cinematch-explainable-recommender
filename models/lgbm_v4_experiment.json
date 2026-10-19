@@ -1,0 +1,56 @@
+{
+  "experiment": "LightGBM v4 listwise",
+  "training_groups": 2750,
+  "training_rows": 369000,
+  "evaluation_users": 1500,
+  "candidate_recall": 0.6906666666666667,
+  "results": {
+    "Audience affinity": {
+      "hit_rate_at_10": 0.22933333333333333,
+      "ndcg_at_10": 0.1290017595367998,
+      "coverage_at_10": 0.6006666666666667
+    },
+    "Popularity": {
+      "hit_rate_at_10": 0.138,
+      "ndcg_at_10": 0.07936458043120738,
+      "coverage_at_10": 0.05466666666666667
+    },
+    "IMDb-only": {
+      "hit_rate_at_10": 0.116,
+      "ndcg_at_10": 0.06776544331471367,
+      "coverage_at_10": 0.048666666666666664
+    },
+    "LightGBM v3": {
+      "hit_rate_at_10": 0.116,
+      "ndcg_at_10": 0.052452615333695767,
+      "coverage_at_10": 0.16
+    },
+    "LightGBM v4": {
+      "hit_rate_at_10": 0.22666666666666666,
+      "ndcg_at_10": 0.12247509953306147,
+      "coverage_at_10": 0.49666666666666665
+    }
+  },
+  "feature_importance": {
+    "cosine_affinity": 8171.420574188232,
+    "shared_positive_users": 6552.8971157073975,
+    "adjusted_affinity": 5946.238899230957,
+    "candidate_year": 4973.797436714172,
+    "candidate_positive_count": 3696.7432432174683,
+    "anchor_imdb_rating": 2965.9394969940186,
+    "semantic_similarity": 2745.724718093872,
+    "year_difference": 2659.7422590255737,
+    "candidate_imdb_rating": 2576.4780826568604,
+    "candidate_imdb_log_votes": 2246.4137687683105,
+    "tfidf_similarity": 1299.8058233261108,
+    "genre_overlap": 577.0484094619751,
+    "affinity_available": 0.0
+  },
+  "limitations": [
+    "Unobserved candidates are uncertain negatives.",
+    "Training retains only retrievable positives.",
+    "Evaluation is restricted to 1500 movies.",
+    "The validation period has been examined in earlier experiments.",
+    "Popularity and affinity features use the earlier feature-history cutoff."
+  ]
+}

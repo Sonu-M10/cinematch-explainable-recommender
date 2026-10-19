@@ -1,0 +1,23 @@
+{
+  "training_groups": 14881,
+  "development_groups": 3721,
+  "best_iteration": 54,
+  "lightgbm_pairwise_accuracy": 0.5710830421929589,
+  "affinity_pairwise_accuracy": 0.5385649019080893,
+  "popularity_pairwise_accuracy": 0.5705455522708949,
+  "features": [
+    "adjusted_affinity",
+    "cosine_affinity",
+    "shared_positive_users",
+    "affinity_available",
+    "candidate_positive_count"
+  ],
+  "feature_importance_gain": {
+    "candidate_positive_count": 9380.451820611954,
+    "shared_positive_users": 5117.392866134644,
+    "cosine_affinity": 2236.4547231197357,
+    "adjusted_affinity": 1483.202799320221,
+    "affinity_available": 0.0
+  },
+  "evaluation_note": "Two observed candidates per user, one positive and one non-positive. Random user-disjoint development split. Not equivalent to full-list HitRate@10."
+}

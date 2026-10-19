@@ -1,0 +1,31 @@
+{
+  "evaluated_users": 2000,
+  "candidate_universe": 1500,
+  "candidate_recall": 0.6925,
+  "policies": {
+    "Popularity": {
+      "hit_rate_at_10": 0.142,
+      "ndcg_at_10": 0.08026843749468701,
+      "catalog_coverage_at_10": 0.06,
+      "hits": 284
+    },
+    "Audience affinity": {
+      "hit_rate_at_10": 0.226,
+      "ndcg_at_10": 0.127379134190188,
+      "catalog_coverage_at_10": 0.6433333333333333,
+      "hits": 452
+    },
+    "IMDb-only": {
+      "hit_rate_at_10": 0.113,
+      "ndcg_at_10": 0.06564668821832148,
+      "catalog_coverage_at_10": 0.054,
+      "hits": 226
+    },
+    "LightGBM v3": {
+      "hit_rate_at_10": 0.1105,
+      "ndcg_at_10": 0.052121722577840965,
+      "catalog_coverage_at_10": 0.17,
+      "hits": 221
+    }
+  }
+}
