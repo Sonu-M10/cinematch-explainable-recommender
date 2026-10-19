@@ -38,3 +38,10 @@ data/
 
 # Notebook checkpoints
 .ipynb_checkpoints/
+
+# Local CineMatch user preferences
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+app_before_storage.py.bak

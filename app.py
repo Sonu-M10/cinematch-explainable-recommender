@@ -22,6 +22,7 @@ import sys
 
 import pandas as pd
 import streamlit as st
+from src import user_storage
 
 
 # ============================================================
@@ -264,10 +265,7 @@ DEFAULTS = {
     "details_id": None,
     "details_from": "Discover",
     "search_description": None,
-    "saved": [],
-    "watched": [],
-    "dismissed": [],
-    "liked": [],
+    **user_storage.load_preferences(),
 }
 
 for key, default in DEFAULTS.items():
@@ -362,6 +360,7 @@ def toggle(bucket, movie_id):
     else:
         values.append(movie_id)
 
+    user_storage.toggle_movie(bucket, movie_id)
     st.session_state[bucket] = values
 
 
@@ -1087,6 +1086,7 @@ with st.sidebar:
                 for key, values in restored.items():
                     st.session_state[key] = values
 
+                user_storage.save_preferences(restored)
                 st.success("Lists restored.")
 
             except (
@@ -1099,6 +1099,7 @@ with st.sidebar:
                 )
 
         if st.button("Clear saved data"):
+            user_storage.clear_preferences()
             for key in buckets:
                 st.session_state[key] = []
 
