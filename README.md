@@ -73,6 +73,14 @@ NDCG was calculated against the ideal ordering within each seed's judged recomme
 
 ## Installation
 
+### Dataset Setup
+
+CineMatch does not redistribute third-party movie datasets.
+
+For instructions on obtaining the original datasets,
+preprocessing them, and validating local artifacts, see
+[DATA_SETUP.md](DATA_SETUP.md).
+
 Create and activate a Python virtual environment:
 
 ```bash
