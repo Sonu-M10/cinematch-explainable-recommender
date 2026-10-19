@@ -9,11 +9,13 @@ Rather than relying on a single recommendation algorithm, CineMatch explores how
 
 The application currently uses a catalog of approximately **133,424 films**.
 
-**[Try CineMatch](https://cinematch-moresh.streamlit.app/)** | **[View the GitHub Repository](https://github.com/Sonu-M10/modern-movie-recommender)**
+**🌐 Try CineMatch Online — No Installation Required**
 
-> **Deployment note:** The public Streamlit Cloud application currently supports CineMatch Classic. The full local application supports all four recommendation engines when the necessary datasets and model artifacts are available.
+You can use CineMatch directly in your browser through the **[live Streamlit application](https://cinematch-moresh.streamlit.app/)**. No downloads, Python installation, or local setup are required.
 
----
+The installation instructions below are intended for developers who want to run the project locally, explore its source code, or experiment with the recommendation engines.
+
+**Note:** The public version currently provides CineMatch Classic. The full local application supports all four recommendation engines when the required data and model artifacts are available.
 
 ## Features
 
