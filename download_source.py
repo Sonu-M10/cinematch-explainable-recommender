@@ -30,6 +30,7 @@ DESTINATION = ROOT / "data" / "movies.csv"
 
 def calculate_sha256(path):
     """Calculate a file's SHA-256 checksum in chunks."""
+    path = Path(path)
     digest = hashlib.sha256()
 
     with path.open("rb") as source:
@@ -40,7 +41,6 @@ def calculate_sha256(path):
             digest.update(chunk)
 
     return digest.hexdigest()
-
 
 def download_source():
     """Download a pinned source dataset without overwriting files."""
