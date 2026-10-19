@@ -1,8 +1,9 @@
 
-"""Prepare the CineMatch Classic catalog for cloud deployment."""
+"""Prepare the CineMatch Classic catalog safely for cloud deployment."""
 
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -11,10 +12,14 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
 CATALOG = DATA_DIR / "movies_expanded.csv"
+LOCK_FILE = DATA_DIR / ".catalog_setup.lock"
+
+LOCK_TIMEOUT = 900
+POLL_INTERVAL = 2
 
 
 def run_script(script):
-    """Run an existing project script and stop if it fails."""
+    """Run a preprocessing script and fail if it exits unsuccessfully."""
     print(f"[CineMatch setup] Running {script}", flush=True)
 
     subprocess.run(
@@ -25,7 +30,7 @@ def run_script(script):
 
 
 def validate_catalog():
-    """Check the generated catalog before loading the engine."""
+    """Check that the generated catalog is usable."""
     if not CATALOG.is_file() or CATALOG.stat().st_size == 0:
         return False
 
@@ -46,8 +51,7 @@ def validate_catalog():
 
         if valid:
             print(
-                f"[CineMatch setup] Catalog ready: "
-                f"{len(data):,} movies",
+                f"[CineMatch setup] Catalog ready: {len(data):,} movies",
                 flush=True,
             )
 
@@ -57,10 +61,8 @@ def validate_catalog():
         return False
 
 
-def ensure_classic_data():
-    """Download and build the catalog only when needed."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-
+def build_catalog():
+    """Build the catalog after acquiring exclusive setup ownership."""
     if validate_catalog():
         return
 
@@ -71,8 +73,7 @@ def ensure_classic_data():
         )
 
     print(
-        "[CineMatch setup] Catalog missing. "
-        "Preparing it from the original source.",
+        "[CineMatch setup] Preparing movie catalog.",
         flush=True,
     )
 
@@ -82,13 +83,51 @@ def ensure_classic_data():
 
     if not validate_catalog():
         raise RuntimeError(
-            "Catalog generation completed, but validation failed."
+            "Catalog generation completed but validation failed."
         )
 
     print(
-        "[CineMatch setup] Classic catalog setup complete.",
+        "[CineMatch setup] Catalog setup complete.",
         flush=True,
     )
+
+
+def ensure_classic_data():
+    """Prevent concurrent executions from building the same catalog."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    if validate_catalog():
+        return
+
+    start = time.monotonic()
+
+    while True:
+        try:
+            with LOCK_FILE.open("x") as lock:
+                lock.write(str(time.time()))
+            break
+
+        except FileExistsError:
+            if validate_catalog():
+                return
+
+            if time.monotonic() - start > LOCK_TIMEOUT:
+                raise TimeoutError(
+                    "Timed out waiting for catalog setup. "
+                    "Check for an interrupted deployment."
+                )
+
+            print(
+                "[CineMatch setup] Another execution is preparing "
+                "the catalog. Waiting...",
+                flush=True,
+            )
+            time.sleep(POLL_INTERVAL)
+
+    try:
+        build_catalog()
+    finally:
+        LOCK_FILE.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
