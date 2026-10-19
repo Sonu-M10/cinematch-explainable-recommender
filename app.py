@@ -18,11 +18,14 @@ Features:
 from pathlib import Path
 import html
 import json
+import os
 import sys
+import uuid
 
 import pandas as pd
 import streamlit as st
 from src import user_storage
+import browser_storage
 
 
 # ============================================================
@@ -31,6 +34,10 @@ from src import user_storage
 
 ROOT = Path(__file__).resolve().parent
 IS_CLOUD = Path("/mount/src").exists()
+USE_BROWSER_STORAGE = (
+    IS_CLOUD
+    or os.getenv("CINEMATCH_TEST_BROWSER_STORAGE") == "1"
+)
 sys.path.insert(0, str(ROOT / "src"))
 
 st.set_page_config(
@@ -273,7 +280,7 @@ DEFAULTS = {
     "search_description": None,
     **(
         {bucket: [] for bucket in user_storage.BUCKETS}
-        if IS_CLOUD
+        if USE_BROWSER_STORAGE
         else user_storage.load_preferences()
     ),
 }
@@ -285,6 +292,69 @@ for key, default in DEFAULTS.items():
             if isinstance(default, list)
             else default
         )
+
+
+# ============================================================
+# BROWSER PREFERENCE PERSISTENCE
+# ============================================================
+
+def preference_snapshot():
+    return {
+        bucket: list(st.session_state[bucket])
+        for bucket in browser_storage.BUCKETS
+    }
+
+
+def queue_preference_save():
+    """Queue a unique write for the next Streamlit render."""
+    if USE_BROWSER_STORAGE:
+        st.session_state["_browser_write"] = {
+            "id": uuid.uuid4().hex,
+            "preferences": preference_snapshot(),
+        }
+
+
+if USE_BROWSER_STORAGE:
+    result = browser_storage.render_storage(
+        st.session_state.get("_browser_write")
+    )
+
+    storage_error = getattr(result, "error", None)
+    browser_snapshot = getattr(result, "snapshot", None)
+    acknowledged = getattr(result, "ack", None)
+
+    if storage_error:
+        st.warning(
+            "Browser storage is unavailable. "
+            "Preferences will only last for this session."
+        )
+        st.session_state["_browser_loaded"] = True
+
+    if (
+        not st.session_state.get("_browser_loaded", False)
+        and browser_snapshot is not None
+    ):
+        restored = browser_storage.normalize_preferences(
+            browser_snapshot
+        )
+
+        for bucket, values in restored.items():
+            st.session_state[bucket] = values
+
+        st.session_state["_browser_loaded"] = True
+        st.rerun()
+
+    pending = st.session_state.get("_browser_write")
+
+    if (
+        pending is not None
+        and acknowledged == pending["id"]
+    ):
+        st.session_state["_browser_write"] = None
+
+    if not st.session_state.get("_browser_loaded", False):
+        st.info("Loading your saved movies from this browser...")
+        st.stop()
 
 
 # ============================================================
@@ -370,9 +440,10 @@ def toggle(bucket, movie_id):
     else:
         values.append(movie_id)
 
-    if not IS_CLOUD:
+    if not USE_BROWSER_STORAGE:
         user_storage.toggle_movie(bucket, movie_id)
     st.session_state[bucket] = values
+    queue_preference_save()
 
 
 def open_details(movie_id, source="Discover"):
@@ -1039,8 +1110,11 @@ with st.sidebar:
     with st.expander("Your data"):
         st.caption(
             "Watchlist and feedback are stored in "
-            "this Streamlit session. Export them "
-            "to keep a copy."
+            + (
+                "this browser. Export them for a backup."
+                if USE_BROWSER_STORAGE
+                else "your local database. Export them for a backup."
+            )
         )
 
         buckets = (
@@ -1099,9 +1173,11 @@ with st.sidebar:
                 for key, values in restored.items():
                     st.session_state[key] = values
 
-                if not IS_CLOUD:
+                if not USE_BROWSER_STORAGE:
                     user_storage.save_preferences(restored)
+                queue_preference_save()
                 st.success("Lists restored.")
+                st.rerun()
 
             except (
                 ValueError,
@@ -1113,11 +1189,12 @@ with st.sidebar:
                 )
 
         if st.button("Clear saved data"):
-            if not IS_CLOUD:
+            if not USE_BROWSER_STORAGE:
                 user_storage.clear_preferences()
             for key in buckets:
                 st.session_state[key] = []
 
+            queue_preference_save()
             st.rerun()
 
 
