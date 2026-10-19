@@ -72,6 +72,7 @@ def download_source():
             revision=REVISION,
         )
 
+        cached_path = Path(cached_path)
         actual_hash = calculate_sha256(cached_path)
 
         if actual_hash != EXPECTED_SHA256:
@@ -108,7 +109,7 @@ def download_source():
                 temporary_path.unlink()
 
         print("[OK] Download completed and verified.")
-        print(f"Saved: {DESTINATION.relative_to(ROOT)}")
+        print(f"Saved: {DESTINATION}")
         return True
 
     except (OSError, ValueError, RuntimeError) as exc:

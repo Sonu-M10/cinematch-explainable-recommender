@@ -30,6 +30,7 @@ from src import user_storage
 # ============================================================
 
 ROOT = Path(__file__).resolve().parent
+IS_CLOUD = Path("/mount/src").exists()
 sys.path.insert(0, str(ROOT / "src"))
 
 st.set_page_config(
@@ -263,14 +264,18 @@ DEFAULTS = {
     "years": (2010, 2026),
     "query": "",
     "selected_movie": None,
-    "model": "Hybrid",
+    "model": "Classic" if IS_CLOUD else "Hybrid",
     "classic_mode": "Evidence-aware",
     "results": None,
     "shown": 8,
     "details_id": None,
     "details_from": "Discover",
     "search_description": None,
-    **user_storage.load_preferences(),
+    **(
+        {bucket: [] for bucket in user_storage.BUCKETS}
+        if IS_CLOUD
+        else user_storage.load_preferences()
+    ),
 }
 
 for key, default in DEFAULTS.items():
@@ -365,7 +370,8 @@ def toggle(bucket, movie_id):
     else:
         values.append(movie_id)
 
-    user_storage.toggle_movie(bucket, movie_id)
+    if not IS_CLOUD:
+        user_storage.toggle_movie(bucket, movie_id)
     st.session_state[bucket] = values
 
 
@@ -501,12 +507,14 @@ def reset_filters():
 # RECOMMENDATION ENGINES
 # ============================================================
 
-MODEL_OPTIONS = [
-    "Hybrid",
-    "Classic",
-    "CineMatch AI (Experimental)",
-    "RRF Ensemble",
-]
+MODEL_OPTIONS = (
+    ["Classic"] if IS_CLOUD else [
+        "Hybrid",
+        "Classic",
+        "CineMatch AI (Experimental)",
+        "RRF Ensemble",
+    ]
+)
 
 CLASSIC_MODES = {
     "Evidence-aware": "evidence_aware",
@@ -1091,7 +1099,8 @@ with st.sidebar:
                 for key, values in restored.items():
                     st.session_state[key] = values
 
-                user_storage.save_preferences(restored)
+                if not IS_CLOUD:
+                    user_storage.save_preferences(restored)
                 st.success("Lists restored.")
 
             except (
@@ -1104,7 +1113,8 @@ with st.sidebar:
                 )
 
         if st.button("Clear saved data"):
-            user_storage.clear_preferences()
+            if not IS_CLOUD:
+                user_storage.clear_preferences()
             for key in buckets:
                 st.session_state[key] = []
 
