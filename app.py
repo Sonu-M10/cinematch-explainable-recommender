@@ -696,90 +696,750 @@ def enrich_results(results):
 # ============================================================
 
 def recommendation_reason(row):
-    return safe_text(
+    reason = safe_text(
         row.get("_reason"),
         "Selected using your discovery preferences.",
     )
 
+    engine = safe_text(row.get("_engine"), "")
+    actual_source = safe_text(
+        row.get("ranking_source"), ""
+    )
+
+    if (
+        engine == "CineMatch AI (Experimental)"
+        and actual_source == "Hybrid fallback"
+    ):
+        reason = reason.replace(
+            "Recommended by CineMatch AI (Experimental)",
+            "Recommended using Hybrid (CineMatch AI fallback)",
+        )
+
+    return reason
+
 
 def model_insights(row):
-    source = safe_text(
-        row.get("ranking_source"),
-        "",
-    )
+    """Explain the engine and ranking mode used for this result."""
 
-    if source:
-        st.write(f"**Ranking source:** {source}")
+    engine = safe_text(row.get("_engine"), "")
+    mode = safe_text(row.get("_ranking_mode"), "")
 
-    if source == "Hybrid fallback":
+    # Older results might not contain this metadata.
+    if not engine:
         st.info(
-            "The experimental model used Hybrid "
-            "because audience history was not supported."
+            "The scoring engine was not recorded for "
+            "this result. Generate recommendations "
+            "again to see the full explanation."
         )
+        return
 
-    supporters = row.get("supporting_models")
-
-    if isinstance(supporters, (list, tuple, set)):
-        supporters = ", ".join(map(str, supporters))
-
-    supporters = safe_text(supporters, "")
-
-    if supporters:
-        st.write(f"**Supporting models:** {supporters}")
-
-    metrics = (
-        ("classic_rank", "Classic rank"),
-        ("hybrid_rank", "Hybrid rank"),
-        ("experimental_rank", "Experimental rank"),
-        ("model_support", "Number of supporting models"),
-        ("semantic_similarity", "Semantic similarity"),
-        ("metadata_similarity", "Metadata similarity"),
-        ("audience_affinity", "Audience affinity"),
-        ("specificity", "Specificity"),
-        ("rrf_score", "RRF score"),
-        ("experimental_score", "Experimental score"),
-        ("similarity", "Similarity / ranking score"),
+    actual_source = safe_text(
+        row.get("ranking_source"), ""
     )
 
-    displayed = False
+    if (
+        engine == "CineMatch AI (Experimental)"
+        and actual_source == "Hybrid fallback"
+    ):
+        st.caption("Actual ranking engine: Hybrid (AI fallback)")
+    else:
+        st.caption(f"Engine: {engine}" + (
+            f" · Ranking: {mode}" if engine == "Classic" else ""
+        ))
 
-    for column, label in metrics:
-        value = number(row, column)
-
-        if pd.notna(value):
-            displayed = True
-
-            if column.endswith("_rank") or column == "model_support":
-                formatted = str(int(value))
-            else:
-                formatted = f"{value:.4f}"
-
-            st.write(f"**{label}:** {formatted}")
-
-    for feature in getattr(classic, "FEATURE_WEIGHTS", {}):
-        value = number(
-            row,
-            f"{feature}_contribution",
+    if (
+        engine == "CineMatch AI (Experimental)"
+        and safe_text(row.get("ranking_source"), "")
+        == "Hybrid fallback"
+    ):
+        st.info(
+            "The experimental model does not support "
+            "this starting movie. CineMatch used "
+            "the Hybrid engine to calculate these "
+            "recommendations."
         )
+        engine = "Hybrid"
 
-        if pd.notna(value):
-            displayed = True
-            st.write(
-                f"**{feature.title()} contribution:** "
-                f"{value:.4f}"
+    if engine != "Classic":
+        explanations = {
+            "Hybrid": (
+                "This movie was recommended because "
+                "its story meaning and movie metadata "
+                "are similar to your selected film."
+            ),
+            "CineMatch AI (Experimental)": (
+                "This engine uses a learned ranking model "
+                "when supported, with a Hybrid fallback."
+            ),
+            "RRF Ensemble": (
+                "This engine combines positions from "
+                "multiple recommendation rankings."
+            ),
+        }
+
+        st.write(explanations.get(
+            engine,
+            "This recommendation was generated "
+            "by the selected engine.",
+        ))
+
+        if engine == "Hybrid":
+            semantic = number(row, "semantic_similarity")
+            metadata = number(row, "metadata_similarity")
+            final_score = number(row, "final_score")
+
+            if pd.notna(semantic) and pd.notna(metadata):
+                a, b = st.columns(2)
+                a.metric("Semantic similarity", f"{semantic:.4f}")
+                b.metric("Metadata similarity", f"{metadata:.4f}")
+
+                st.write(
+                    "Hybrid gives equal weight to semantic "
+                    "meaning and metadata similarity."
+                )
+
+                with st.expander(
+                    "How did CineMatch calculate this?"
+                ):
+                    st.markdown(
+                        "**1. Measure semantic similarity**"
+                    )
+
+                    st.write(
+                        "The model represents each movie "
+                        "using a sentence embedding. "
+                        "Similarity is calculated using "
+                        "the dot product of normalized "
+                        "embedding vectors, equivalent "
+                        "to cosine similarity."
+                    )
+
+                    st.latex(
+                        r"S_{\mathrm{semantic}} = "
+                        r"\cos(\mathbf{e}_1,\mathbf{e}_2)"
+                    )
+
+                    st.write(
+                        f"Semantic similarity: {semantic:.4f}"
+                    )
+
+                    st.markdown(
+                        "**2. Measure metadata similarity**"
+                    )
+
+                    st.write(
+                        "CineMatch calculates weighted "
+                        "TF-IDF cosine similarity across "
+                        "overview, genres, keywords, "
+                        "directors, and cast."
+                    )
+
+                    st.latex(
+                        r"S_{\mathrm{metadata}} = "
+                        r"\sum_f w_f "
+                        r"\cos(\mathbf{x}_f,\mathbf{y}_f)"
+                    )
+
+                    contributions = {
+                        feature: number(
+                            row, f"{feature}_contribution"
+                        )
+                        for feature in classic.FEATURE_WEIGHTS
+                    }
+
+                    if all(
+                        pd.notna(v)
+                        for v in contributions.values()
+                    ):
+                        terms = " + ".join(
+                            f"{v:.4f}"
+                            for v in contributions.values()
+                        )
+
+                        st.code(
+                            f"{terms} = {metadata:.4f}",
+                            language=None,
+                        )
+                    else:
+                        st.write(
+                            f"Metadata similarity: {metadata:.4f}"
+                        )
+
+                    st.markdown(
+                        "**3. Combine the two scores**"
+                    )
+
+                    st.latex(
+                        r"F = 0.50S_{\mathrm{semantic}}"
+                        r" + 0.50S_{\mathrm{metadata}}"
+                    )
+
+                    computed = 0.5 * semantic + 0.5 * metadata
+
+                    displayed_final = (
+                        final_score
+                        if pd.notna(final_score)
+                        else computed
+                    )
+
+                    st.code(
+                        f"0.50 × {semantic:.4f} + "
+                        f"0.50 × {metadata:.4f} = "
+                        f"{displayed_final:.4f}",
+                        language=None,
+                    )
+
+                    st.caption(
+                        "The calculations use full-precision "
+                        "values. Displayed numbers are "
+                        "rounded and are not probabilities "
+                        "of enjoyment."
+                    )
+
+            return
+
+        if engine == "RRF Ensemble":
+            st.markdown("**How the models voted**")
+
+            weights = {
+                "Classic": ("classic_rank", 1.0),
+                "Hybrid": ("hybrid_rank", 1.0),
+                "CineMatch AI": ("experimental_rank", 1.25),
+            }
+
+            contributions = []
+            rows = []
+
+            for name, (column, weight) in weights.items():
+                rank = number(row, column)
+
+                if pd.isna(rank) or rank < 1:
+                    continue
+
+                contribution = weight / (60 + rank)
+                contributions.append(contribution)
+
+                rows.append({
+                    "Engine": name,
+                    "Rank": int(rank),
+                    "Weight": f"{weight:.2f}",
+                    "RRF contribution": f"{contribution:.6f}",
+                })
+
+            if rows:
+                st.write(
+                    "This movie appeared in "
+                    f"{len(rows)} model ranking(s). "
+                    "Higher positions produce larger "
+                    "contributions to the final score."
+                )
+
+                st.dataframe(
+                    pd.DataFrame(rows),
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+                rrf = number(row, "rrf_score")
+                if pd.notna(rrf):
+                    st.metric("Ensemble score", f"{rrf:.6f}")
+
+                with st.expander(
+                    "How did CineMatch calculate this?"
+                ):
+                    st.markdown(
+                        "**1. Collect model rankings**"
+                    )
+
+                    st.write(
+                        "Classic and Hybrid each rank "
+                        "candidate movies. CineMatch AI "
+                        "also contributes when supported. "
+                        "The ensemble uses ranking "
+                        "positions, not raw model scores."
+                    )
+
+                    st.markdown(
+                        "**2. Calculate reciprocal-rank "
+                        "contributions**"
+                    )
+
+                    st.latex(
+                        r"c_m = \frac{w_m}{60+r_m}"
+                    )
+
+                    for item in rows:
+                        name = item["Engine"]
+                        rank = item["Rank"]
+                        weight = float(item["Weight"])
+
+                        st.code(
+                            f"{name}: {weight:.2f} / "
+                            f"(60 + {rank}) = "
+                            f"{weight / (60 + rank):.6f}",
+                            language=None,
+                        )
+
+                    st.markdown(
+                        "**3. Add the contributions**"
+                    )
+
+                    st.latex(
+                        r"F_{\mathrm{RRF}} = \sum_m c_m"
+                    )
+
+                    terms = " + ".join(
+                        f"{value:.6f}"
+                        for value in contributions
+                    )
+
+                    st.code(
+                        f"{terms} = {sum(contributions):.6f}",
+                        language=None,
+                    )
+
+                    st.caption(
+                        "The actual calculation uses "
+                        "full-precision values. "
+                        "The ensemble score is not "
+                        "a probability of enjoyment."
+                    )
+            else:
+                st.info(
+                    "Individual model ranks were not "
+                    "returned for this recommendation."
+                )
+
+            return
+
+        if engine == "CineMatch AI (Experimental)":
+            source_name = safe_text(
+                row.get("ranking_source"), ""
             )
 
-    if not displayed:
+            if source_name == "Hybrid fallback":
+                st.info(
+                    "The experimental ranker could not "
+                    "score this selected movie, so "
+                    "CineMatch used Hybrid instead."
+                )
+
+                semantic = number(
+                    row, "semantic_similarity"
+                )
+                metadata = number(
+                    row, "metadata_similarity"
+                )
+
+                if (
+                    pd.notna(semantic)
+                    and pd.notna(metadata)
+                ):
+                    st.write(
+                        "The fallback combines semantic "
+                        "and metadata similarity equally."
+                    )
+
+                    with st.expander(
+                        "How did CineMatch calculate this?"
+                    ):
+                        st.latex(
+                            r"F = 0.50S_{\mathrm{semantic}}"
+                            r" + 0.50S_{\mathrm{metadata}}"
+                        )
+
+                        score = number(row, "final_score")
+                        if pd.isna(score):
+                            score = (
+                                0.5 * semantic
+                                + 0.5 * metadata
+                            )
+
+                        st.code(
+                            f"0.50 × {semantic:.4f} + "
+                            f"0.50 × {metadata:.4f} = "
+                            f"{score:.4f}",
+                            language=None,
+                        )
+
+                return
+
+            score = number(row, "experimental_score")
+            affinity = number(row, "audience_affinity")
+            semantic = number(row, "semantic_similarity")
+
+            st.write(
+                "LightGBM evaluates relationships "
+                "between the selected movie and "
+                "candidate movies using audience "
+                "history, content similarity, and "
+                "movie metadata."
+            )
+
+            if pd.notna(score):
+                st.metric(
+                    "LightGBM ranking score",
+                    f"{score:.4f}",
+                )
+
+            with st.expander(
+                "How did CineMatch calculate this?"
+            ):
+                st.markdown(
+                    "**1. Build the candidate features**"
+                )
+
+                st.write(
+                    "The ranker receives 13 numerical "
+                    "features covering audience affinity, "
+                    "shared positive-rating users, "
+                    "text similarity, genre overlap, "
+                    "release year, and IMDb ratings."
+                )
+
+                observed = []
+
+                if pd.notna(affinity):
+                    observed.append({
+                        "Signal": "Audience affinity",
+                        "Value": f"{affinity:.4f}",
+                    })
+
+                if pd.notna(semantic):
+                    observed.append({
+                        "Signal": "Semantic similarity",
+                        "Value": f"{semantic:.4f}",
+                    })
+
+                if observed:
+                    st.dataframe(
+                        pd.DataFrame(observed),
+                        hide_index=True,
+                        use_container_width=True,
+                    )
+
+                st.caption(
+                    "These are available inputs, not "
+                    "individual feature contributions."
+                )
+
+                st.markdown(
+                    "**2. Evaluate the trained trees**"
+                )
+
+                st.write(
+                    "LightGBM applies its learned "
+                    "decision trees to the feature "
+                    "vector and combines their outputs "
+                    "into a ranking score."
+                )
+
+                st.latex(
+                    r"F(\mathbf{x}) = "
+                    r"b + \sum_{t=1}^{T} f_t(\mathbf{x})"
+                )
+
+                st.caption(
+                    "Each fₜ represents a trained tree. "
+                    "The exact tree outputs are not "
+                    "currently returned by CineMatch."
+                )
+
+                st.markdown(
+                    "**3. Rank the candidate movies**"
+                )
+
+                if pd.notna(score):
+                    st.write(
+                        f"This movie received a model "
+                        f"score of **{score:.4f}**. "
+                        "Candidates with higher scores "
+                        "rank ahead of candidates with "
+                        "lower scores."
+                    )
+                else:
+                    st.write(
+                        "The individual model score "
+                        "was not returned."
+                    )
+
+                st.caption(
+                    "LightGBM scores are not calibrated "
+                    "enjoyment probabilities. A complete "
+                    "feature-attribution explanation "
+                    "would require additional calculations."
+                )
+
+            return
+
+        with st.expander("Available model diagnostics"):
+            for column, label in (
+                ("semantic_similarity", "Semantic similarity"),
+                ("metadata_similarity", "Metadata similarity"),
+                ("audience_affinity", "Audience affinity"),
+                ("rrf_score", "RRF score"),
+                ("experimental_score", "Experimental score"),
+                ("classic_rank", "Classic rank"),
+                ("hybrid_rank", "Hybrid rank"),
+                ("experimental_rank", "Experimental rank"),
+            ):
+                value = number(row, column)
+                if pd.notna(value):
+                    st.write(f"**{label}:** {value:.4f}")
+
+            source_name = safe_text(
+                row.get("ranking_source"), ""
+            )
+            if source_name:
+                st.write(f"**Ranking source:** {source_name}")
+
         st.caption(
-            "No additional numerical model diagnostics "
-            "were returned for this recommendation."
+            "These values are ranking signals, "
+            "not enjoyment probabilities."
+        )
+        return
+
+    weights = classic.FEATURE_WEIGHTS
+
+    values = {
+        feature: number(row, f"{feature}_contribution")
+        for feature in weights
+    }
+
+    if any(pd.isna(value) for value in values.values()):
+        st.info(
+            "Feature contributions are unavailable "
+            "for this recommendation."
+        )
+        return
+
+    similarity = number(row, "similarity")
+    specificity = number(row, "specificity")
+    final_score = number(row, "final_score")
+
+    if pd.isna(similarity):
+        st.info("Content similarity was not returned.")
+        return
+
+    ordered = sorted(
+        values.items(),
+        key=lambda item: item[1],
+        reverse=True,
+    )
+
+    strongest = [
+        feature.replace("_", " ")
+        for feature, value in ordered
+        if value > 1e-8
+    ][:2]
+
+    if strongest:
+        st.write(
+            "CineMatch recommended this movie primarily "
+            "because of its similarity in "
+            + " and ".join(strongest)
+            + ". The model compares movie features "
+            "rather than predicting whether you will "
+            "personally enjoy the film."
+        )
+    else:
+        st.write(
+            "CineMatch compared the movie's content "
+            "features, but no strong individual "
+            "feature match was identified."
         )
 
-    st.caption(
-        "These values are ranking signals, not "
-        "probabilities of enjoyment. Scores from "
-        "different engines may not be comparable."
+    st.markdown("**What contributed to the match?**")
+
+    breakdown = pd.DataFrame([
+        {
+            "Feature": feature.title(),
+            "Weight": f"{weights[feature]:.0%}",
+            "Contribution": f"{value:.4f}",
+        }
+        for feature, value in ordered
+    ])
+
+    st.dataframe(
+        breakdown,
+        hide_index=True,
+        use_container_width=True,
     )
+
+    a, b = st.columns(2)
+
+    a.metric("Content similarity", f"{similarity:.4f}")
+
+    if pd.notna(final_score):
+        b.metric("Final ranking score", f"{final_score:.4f}")
+
+    with st.expander("How did CineMatch calculate this?"):
+
+        st.markdown("**1. Compare movie features**")
+
+        st.write(
+            "Classic converts each feature into TF-IDF "
+            "vectors and measures cosine similarity. "
+            "Each similarity is multiplied by its "
+            "feature weight."
+        )
+
+        st.latex(
+            r"s_f = w_f \cdot "
+            r"\cos(\mathbf{x}_f,\mathbf{y}_f)"
+        )
+
+        st.markdown("**2. Calculate content similarity**")
+
+        st.latex(
+            r"S = \sum_f w_f "
+            r"\cos(\mathbf{x}_f,\mathbf{y}_f)"
+        )
+
+        terms = " + ".join(
+            f"{values[feature]:.4f}"
+            for feature in weights
+        )
+
+        st.code(
+            f"{terms} = {similarity:.4f}",
+            language=None,
+        )
+
+        st.markdown("**3. Measure genre dependence**")
+
+        if pd.notna(specificity):
+            specific = sum(
+                values[feature]
+                for feature in (
+                    "overview",
+                    "keywords",
+                    "directors",
+                    "cast",
+                )
+            )
+
+            st.write(
+                "Specificity measures the share of "
+                "content similarity that comes from "
+                "non-genre features."
+            )
+
+            st.latex(
+                r"\text{Specificity} = "
+                r"\frac{\text{Non-genre similarity}}"
+                r"{\text{Total similarity}}"
+            )
+
+            st.code(
+                f"{specific:.4f} / {similarity:.4f}"
+                f" = {specificity:.4f}",
+                language=None,
+            )
+
+        st.markdown("**4. Calculate the final ranking score**")
+
+        if mode == "Pure similarity":
+            st.write(
+                "Pure similarity uses the raw content "
+                "similarity without a rating bonus."
+            )
+
+            st.latex(r"F = S")
+
+            if pd.notna(final_score):
+                st.code(
+                    f"F = {final_score:.4f}",
+                    language=None,
+                )
+
+        elif mode == "Evidence-aware":
+            adjusted = number(
+                row, "adjusted_similarity"
+            )
+            adaptive = number(
+                row, "adaptive_quality_bonus"
+            )
+            dependence = number(
+                row, "genre_dependence"
+            )
+            confidence = number(
+                row, "rating_confidence"
+            )
+            quality = number(
+                row, "quality_bonus"
+            )
+
+            st.write(
+                "Evidence-aware ranking reduces the "
+                "influence of genre-heavy matches, "
+                "then adds a rating-quality bonus "
+                "scaled by rating confidence."
+            )
+
+            st.latex(
+                r"F = S(1 - 0.15D)"
+                r" + 0.30CDQ"
+            )
+
+            st.caption(
+                "D = genre dependence, "
+                "C = rating confidence, "
+                "Q = quality bonus."
+            )
+
+            if all(pd.notna(x) for x in (
+                dependence, confidence, quality
+            )):
+                st.code(
+                    f"D = {dependence:.4f}\n"
+                    f"C = {confidence:.4f}\n"
+                    f"Q = {quality:.4f}",
+                    language=None,
+                )
+
+            if all(pd.notna(x) for x in (
+                adjusted, adaptive, final_score
+            )):
+                st.code(
+                    f"{adjusted:.4f} + "
+                    f"{adaptive:.4f} = "
+                    f"{final_score:.4f}",
+                    language=None,
+                )
+
+        elif mode == "Fixed quality":
+            quality = number(row, "quality_bonus")
+
+            st.write(
+                "Fixed quality adds 15% of the "
+                "rating-quality bonus to the raw "
+                "content similarity."
+            )
+
+            st.latex(r"F = S + 0.15Q")
+
+            if pd.notna(quality) and pd.notna(final_score):
+                st.code(
+                    f"{similarity:.4f} + "
+                    f"0.15 × {quality:.4f} = "
+                    f"{final_score:.4f}",
+                    language=None,
+                )
+
+        else:
+            st.info(
+                "The ranking strategy was not "
+                "recognized, so no final-score "
+                "formula is assumed."
+            )
+
+        st.caption(
+            "Values are rounded for display. "
+            "The engine calculates with full "
+            "precision. Scores are ranking signals, "
+            "not probabilities of enjoyment."
+        )
 
 
 # ============================================================
@@ -1015,8 +1675,7 @@ def movie_details(movie_id):
                 recommendation_reason(result_row)
             )
 
-            with st.expander("Model insights"):
-                model_insights(result_row)
+            model_insights(result_row)
 
 
 # ============================================================
@@ -1621,6 +2280,13 @@ if find_clicked:
                 results = enrich_results(results)
 
                 if not results.empty:
+                    results["_engine"] = model
+                    results["_ranking_mode"] = (
+                        st.session_state.classic_mode
+                        if model == "Classic"
+                        else ""
+                    )
+
                     results = apply_hard_filters(
                         results,
                         **requirements,
