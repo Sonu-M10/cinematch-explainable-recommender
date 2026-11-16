@@ -314,8 +314,8 @@ The results provide an initial comparison of ensemble weighting strategies rathe
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Sonu-M10/modern-movie-recommender.git
-cd modern-movie-recommender
+git clone https://github.com/Sonu-M10/cinematch-explainable-recommender.git
+cd cinematch-explainable-recommender
 ```
 
 ### 2. Create a Virtual Environment
