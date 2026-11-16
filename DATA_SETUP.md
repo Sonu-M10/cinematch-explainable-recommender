@@ -5,11 +5,11 @@ CineMatch does **not** redistribute the original movie datasets or the processed
 ## 1. Install the project
 
 ```bash
-git clone https://github.com/Sonu-M10/modern-movie-recommender.git
-cd modern-movie-recommender
+git clone https://github.com/Sonu-M10/cinematch-explainable-recommender.git
+cd cinematch-explainable-recommender
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
 ## 2. Download the source movie catalog
